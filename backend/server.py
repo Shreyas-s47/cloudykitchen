@@ -64,9 +64,15 @@ class Product(BaseModel):
     description: str
     images: List[str]
     category: str  # 'vegan' or 'vegetarian'
+    subcategory: str  # 'north-indian', 'south-indian', 'street-food', 'sweets', 'beverages', 'snacks'
     base_price: float
     customization_options: Dict[str, CustomizationCategory] = Field(default_factory=dict)
     is_active: bool = True
+    stock_quantity: int = 100  # Inventory management
+    min_stock_level: int = 10
+    preparation_time: int = 20  # in minutes
+    tags: List[str] = Field(default_factory=list)  # For search functionality
+    nutrition_info: Optional[Dict[str, Any]] = None
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
 
@@ -75,17 +81,43 @@ class ProductCreate(BaseModel):
     description: str
     images: List[str]
     category: str
+    subcategory: str
     base_price: float
     customization_options: Dict[str, CustomizationCategory] = Field(default_factory=dict)
+    stock_quantity: int = 100
+    min_stock_level: int = 10
+    preparation_time: int = 20
+    tags: List[str] = Field(default_factory=list)
+    nutrition_info: Optional[Dict[str, Any]] = None
 
 class ProductUpdate(BaseModel):
     name: Optional[str] = None
     description: Optional[str] = None
     images: Optional[List[str]] = None
     category: Optional[str] = None
+    subcategory: Optional[str] = None
     base_price: Optional[float] = None
     customization_options: Optional[Dict[str, CustomizationCategory]] = None
     is_active: Optional[bool] = None
+    stock_quantity: Optional[int] = None
+    min_stock_level: Optional[int] = None
+    preparation_time: Optional[int] = None
+    tags: Optional[List[str]] = None
+    nutrition_info: Optional[Dict[str, Any]] = None
+
+# Admin Models
+class AdminLogin(BaseModel):
+    username: str
+    password: str
+
+class AdminTokenResponse(BaseModel):
+    access_token: str
+    token_type: str
+    username: str
+
+class ImageUpload(BaseModel):
+    filename: str
+    image_data: str  # base64 encoded image
 
 class CartItem(BaseModel):
     product_id: str
