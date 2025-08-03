@@ -183,6 +183,16 @@ def create_access_token(data: dict, expires_delta: timedelta = None):
     encoded_jwt = jwt.encode(to_encode, JWT_SECRET, algorithm=JWT_ALGORITHM)
     return encoded_jwt
 
+def create_admin_token(data: dict, expires_delta: timedelta = None):
+    to_encode = data.copy()
+    if expires_delta:
+        expire = datetime.utcnow() + expires_delta
+    else:
+        expire = datetime.utcnow() + timedelta(hours=8)  # Shorter expiry for admin
+    to_encode.update({"exp": expire})
+    encoded_jwt = jwt.encode(to_encode, ADMIN_JWT_SECRET, algorithm=JWT_ALGORITHM)
+    return encoded_jwt
+
 async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)):
     try:
         payload = jwt.decode(credentials.credentials, JWT_SECRET, algorithms=[JWT_ALGORITHM])
@@ -195,6 +205,41 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
         return User(**user)
     except jwt.PyJWTError:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
+
+async def get_admin_user(credentials: HTTPAuthorizationCredentials = Depends(security)):
+    try:
+        payload = jwt.decode(credentials.credentials, ADMIN_JWT_SECRET, algorithms=[JWT_ALGORITHM])
+        username: str = payload.get("sub")
+        if username is None or username not in ADMIN_CREDENTIALS:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid admin token")
+        return {"username": username}
+    except jwt.PyJWTError:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid admin token")
+
+def save_base64_image(image_data: str, filename: str) -> str:
+    """Save base64 image data and return the image URL"""
+    try:
+        # Remove data:image/jpeg;base64, prefix if present
+        if ',' in image_data:
+            image_data = image_data.split(',')[1]
+        
+        # Decode base64
+        image_bytes = base64.b64decode(image_data)
+        
+        # Create uploads directory if it doesn't exist
+        upload_dir = Path("uploads")
+        upload_dir.mkdir(exist_ok=True)
+        
+        # Save image
+        image_path = upload_dir / filename
+        with open(image_path, "wb") as f:
+            f.write(image_bytes)
+        
+        # Return relative URL (in production, use proper image hosting)
+        return f"/uploads/{filename}"
+    
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Failed to save image: {str(e)}")
 
 # Initialize sample data
 async def init_sample_data():
