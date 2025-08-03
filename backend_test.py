@@ -17,13 +17,22 @@ class CloudsKitchenAPITester:
 
     def run_test(self, name, method, endpoint, expected_status, data=None, headers=None):
         """Run a single API test"""
-        url = f"{self.api_url}/{endpoint}" if not endpoint.startswith('http') else endpoint
+        # Handle full URLs vs relative endpoints
+        if endpoint.startswith('http'):
+            url = endpoint
+        elif endpoint.startswith('/api/admin'):
+            url = f"{self.base_url}{endpoint}"
+        elif endpoint.startswith('/api'):
+            url = f"{self.base_url}{endpoint}"
+        else:
+            url = f"{self.api_url}/{endpoint}"
+            
         test_headers = {'Content-Type': 'application/json'}
         
         if headers:
             test_headers.update(headers)
         
-        if self.token:
+        if self.token and 'Authorization' not in test_headers:
             test_headers['Authorization'] = f'Bearer {self.token}'
 
         self.tests_run += 1
