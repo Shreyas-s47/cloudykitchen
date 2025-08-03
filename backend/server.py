@@ -459,6 +459,155 @@ async def init_sample_data():
         product = Product(**product_data)
         await db.products.insert_one(product.dict())
 
+# Admin Authentication Routes
+@admin_router.post("/login", response_model=AdminTokenResponse)
+async def admin_login(admin_creds: AdminLogin):
+    if admin_creds.username not in ADMIN_CREDENTIALS or ADMIN_CREDENTIALS[admin_creds.username] != admin_creds.password:
+        raise HTTPException(status_code=401, detail="Invalid admin credentials")
+    
+    access_token = create_admin_token(data={"sub": admin_creds.username})
+    return AdminTokenResponse(
+        access_token=access_token,
+        token_type="bearer",
+        username=admin_creds.username
+    )
+
+@admin_router.get("/verify")
+async def verify_admin_token(admin_user=Depends(get_admin_user)):
+    return {"valid": True, "username": admin_user["username"]}
+
+# Admin Product Management Routes
+@admin_router.get("/products", response_model=List[Product])
+async def admin_get_products(
+    category: Optional[str] = None,
+    active_only: bool = False,
+    admin_user=Depends(get_admin_user)
+):
+    query = {}
+    if category:
+        query["category"] = category
+    if active_only:
+        query["is_active"] = True
+    
+    products = await db.products.find(query).to_list(1000)
+    return [Product(**product) for product in products]
+
+@admin_router.get("/products/{product_id}", response_model=Product)
+async def admin_get_product(product_id: str, admin_user=Depends(get_admin_user)):
+    product = await db.products.find_one({"id": product_id})
+    if not product:
+        raise HTTPException(status_code=404, detail="Product not found")
+    return Product(**product)
+
+@admin_router.post("/products", response_model=Product)
+async def admin_create_product(product_data: ProductCreate, admin_user=Depends(get_admin_user)):
+    product = Product(**product_data.dict())
+    await db.products.insert_one(product.dict())
+    return product
+
+@admin_router.put("/products/{product_id}", response_model=Product)
+async def admin_update_product(
+    product_id: str, 
+    product_update: ProductUpdate, 
+    admin_user=Depends(get_admin_user)
+):
+    update_data = {k: v for k, v in product_update.dict().items() if v is not None}
+    update_data["updated_at"] = datetime.utcnow()
+    
+    result = await db.products.update_one({"id": product_id}, {"$set": update_data})
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Product not found")
+    
+    updated_product = await db.products.find_one({"id": product_id})
+    return Product(**updated_product)
+
+@admin_router.delete("/products/{product_id}")
+async def admin_delete_product(product_id: str, admin_user=Depends(get_admin_user)):
+    result = await db.products.delete_one({"id": product_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Product not found")
+    return {"message": "Product deleted successfully"}
+
+@admin_router.post("/products/{product_id}/toggle-status")
+async def admin_toggle_product_status(product_id: str, admin_user=Depends(get_admin_user)):
+    product = await db.products.find_one({"id": product_id})
+    if not product:
+        raise HTTPException(status_code=404, detail="Product not found")
+    
+    new_status = not product["is_active"]
+    await db.products.update_one(
+        {"id": product_id}, 
+        {"$set": {"is_active": new_status, "updated_at": datetime.utcnow()}}
+    )
+    return {"message": f"Product {'activated' if new_status else 'deactivated'} successfully"}
+
+@admin_router.post("/upload-image")
+async def admin_upload_image(image_data: ImageUpload, admin_user=Depends(get_admin_user)):
+    try:
+        image_url = save_base64_image(image_data.image_data, image_data.filename)
+        return {"image_url": image_url, "message": "Image uploaded successfully"}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+# Admin Dashboard Stats
+@admin_router.get("/stats")
+async def admin_get_stats(admin_user=Depends(get_admin_user)):
+    total_products = await db.products.count_documents({})
+    active_products = await db.products.count_documents({"is_active": True})
+    total_orders = await db.orders.count_documents({})
+    total_users = await db.users.count_documents({})
+    
+    # Low stock products
+    low_stock_products = await db.products.find({
+        "$expr": {"$lte": ["$stock_quantity", "$min_stock_level"]}
+    }).to_list(100)
+    
+    return {
+        "total_products": total_products,
+        "active_products": active_products,
+        "inactive_products": total_products - active_products,
+        "total_orders": total_orders,
+        "total_users": total_users,
+        "low_stock_products": len(low_stock_products),
+        "low_stock_items": [Product(**product) for product in low_stock_products]
+    }
+
+# Admin Order Management
+@admin_router.get("/orders")
+async def admin_get_orders(
+    status: Optional[str] = None,
+    limit: int = 50,
+    admin_user=Depends(get_admin_user)
+):
+    query = {}
+    if status:
+        query["order_status"] = status
+    
+    orders = await db.orders.find(query).sort("order_date", -1).limit(limit).to_list(limit)
+    return [Order(**order) for order in orders]
+
+@admin_router.put("/orders/{order_id}/status")
+async def admin_update_order_status(
+    order_id: str, 
+    status_data: dict, 
+    admin_user=Depends(get_admin_user)
+):
+    valid_statuses = ["placed", "confirmed", "preparing", "ready", "dispatched", "delivered", "cancelled"]
+    new_status = status_data.get("order_status")
+    
+    if new_status not in valid_statuses:
+        raise HTTPException(status_code=400, detail="Invalid order status")
+    
+    result = await db.orders.update_one(
+        {"id": order_id},
+        {"$set": {"order_status": new_status, "updated_at": datetime.utcnow()}}
+    )
+    
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Order not found")
+    
+    return {"message": "Order status updated successfully"}
+
 # Product routes
 @api_router.get("/products", response_model=List[Product])
 async def get_products(category: Optional[str] = None, active_only: bool = True):
