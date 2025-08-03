@@ -4,7 +4,7 @@ from datetime import datetime
 import json
 
 class CloudsKitchenAPITester:
-    def __init__(self, base_url="https://3fe7029f-01d6-4183-8460-ba2af914678c.preview.emergentagent.com"):
+    def __init__(self, base_url="https://1c5c2587-1abe-4e5d-8f3a-e3ddadb5e730.preview.emergentagent.com"):
         self.base_url = base_url
         self.api_url = f"{base_url}/api"
         self.token = None
