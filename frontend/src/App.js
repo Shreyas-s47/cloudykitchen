@@ -682,7 +682,26 @@ function CartPage() {
   );
 }
 
-// Auth Modal Component
+// Product Detail Page
+function ProductDetailPage() {
+  return (
+    <div className="min-h-screen bg-gray-50">
+      <Header />
+      <div className="container mx-auto px-4 py-8">
+        <div className="text-center">
+          <h2 className="text-2xl font-semibold mb-4">Product Details</h2>
+          <p className="text-gray-600">Product detail page coming soon...</p>
+          <Button 
+            onClick={() => window.location.href = '/'}
+            className="mt-4 bg-green-600 hover:bg-green-700"
+          >
+            Back to Home
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
 function AuthModal({ onClose }) {
   const { setToken, loadUserInfo } = React.useContext(AppContext);
   const [step, setStep] = useState('request'); // 'request' or 'verify'
