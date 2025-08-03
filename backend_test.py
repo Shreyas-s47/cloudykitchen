@@ -559,32 +559,64 @@ class CloudsKitchenAPITester:
 
     def run_all_tests(self):
         """Run all API tests"""
-        print("🚀 Starting Clouds Kitchen API Tests")
+        print("🚀 Starting Comprehensive Clouds Kitchen API Tests")
         print(f"🌐 Testing against: {self.base_url}")
         
-        # Run test suites
+        # Run test suites in order
         self.test_health_check()
+        
+        # Product Management Testing
         self.test_products_api()
+        self.test_product_data_structure()
+        
+        # Admin Authentication Testing
+        admin_auth_success = self.test_admin_authentication()
+        
+        # Admin Product Management Testing (requires admin auth)
+        if admin_auth_success:
+            self.test_admin_product_management()
+            self.test_admin_stats_dashboard()
+            self.test_admin_order_management()
+        
+        # User Authentication Testing
         self.test_cart_calculation()
         auth_success = self.test_authentication_flow()
         
+        # Cart & Order Testing (requires user auth)
         if auth_success:
             self.test_order_flow()
         
+        # Error Handling Testing
         self.test_error_handling()
         
         # Print final results
         print("\n" + "="*60)
-        print("FINAL TEST RESULTS")
+        print("COMPREHENSIVE TEST RESULTS")
         print("="*60)
         print(f"📊 Tests passed: {self.tests_passed}/{self.tests_run}")
         print(f"📈 Success rate: {(self.tests_passed/self.tests_run)*100:.1f}%")
         
+        # Summary by category
+        print("\n📋 Test Categories Covered:")
+        print("   ✅ Basic Health Endpoints")
+        print("   ✅ Product Management (40 products)")
+        print("   ✅ Product Data Structure Validation")
+        print("   ✅ Admin Authentication (admin/cloudskitchen123)")
+        if admin_auth_success:
+            print("   ✅ Admin Product CRUD Operations")
+            print("   ✅ Admin Stats & Dashboard")
+            print("   ✅ Admin Order Management")
+        print("   ✅ User OTP Authentication")
+        print("   ✅ Cart Calculation")
+        if auth_success:
+            print("   ✅ Order Creation Flow")
+        print("   ✅ Error Handling Scenarios")
+        
         if self.tests_passed == self.tests_run:
-            print("🎉 All tests passed!")
+            print("\n🎉 All tests passed! Backend is working correctly.")
             return 0
         else:
-            print("⚠️  Some tests failed")
+            print(f"\n⚠️  {self.tests_run - self.tests_passed} tests failed")
             return 1
 
 def main():
