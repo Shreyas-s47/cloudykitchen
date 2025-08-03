@@ -188,6 +188,7 @@ function App() {
             <Route path="/cart" element={<CartPage />} />
             <Route path="/checkout" element={<CheckoutPage />} />
             <Route path="/profile" element={<ProfilePage />} />
+            <Route path="/admin/*" element={<AdminRoutes />} />
           </Routes>
         </BrowserRouter>
         <Toaster />
