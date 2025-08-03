@@ -34,10 +34,20 @@ app = FastAPI(title="Clouds Kitchen API")
 # Create a router with the /api prefix
 api_router = APIRouter(prefix="/api")
 
+# Create admin router
+admin_router = APIRouter(prefix="/api/admin")
+
 # Security
 security = HTTPBearer()
 JWT_SECRET = "your-super-secret-jwt-key-change-in-production"
 JWT_ALGORITHM = "HS256"
+ADMIN_JWT_SECRET = "admin-super-secret-jwt-key-change-in-production"
+
+# Admin credentials (in production, store hashed passwords in database)
+ADMIN_CREDENTIALS = {
+    "admin": "cloudskitchen123",  # username: password
+    "manager": "manager123"
+}
 
 # Models
 class CustomizationOption(BaseModel):
