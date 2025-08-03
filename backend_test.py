@@ -7,10 +7,13 @@ class CloudsKitchenAPITester:
     def __init__(self, base_url="https://1c5c2587-1abe-4e5d-8f3a-e3ddadb5e730.preview.emergentagent.com"):
         self.base_url = base_url
         self.api_url = f"{base_url}/api"
+        self.admin_api_url = f"{base_url}/api/admin"
         self.token = None
+        self.admin_token = None
         self.tests_run = 0
         self.tests_passed = 0
         self.test_user_phone = "9876543210"  # Test phone number as mentioned in requirements
+        self.product_id = None
 
     def run_test(self, name, method, endpoint, expected_status, data=None, headers=None):
         """Run a single API test"""
