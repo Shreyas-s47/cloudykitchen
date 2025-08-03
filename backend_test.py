@@ -248,6 +248,274 @@ class CloudsKitchenAPITester:
         
         return False
 
+    def test_admin_authentication(self):
+        """Test admin authentication flow"""
+        print("\n" + "="*50)
+        print("TESTING ADMIN AUTHENTICATION")
+        print("="*50)
+        
+        # Test admin login with correct credentials
+        admin_login_data = {
+            "username": "admin",
+            "password": "cloudskitchen123"
+        }
+        
+        success, login_response = self.run_test(
+            "Admin Login", 
+            "POST", 
+            f"{self.admin_api_url}/login", 
+            200, 
+            data=admin_login_data
+        )
+        
+        if success and 'access_token' in login_response:
+            self.admin_token = login_response['access_token']
+            print(f"   Admin authentication successful!")
+            
+            # Test admin token verification
+            admin_headers = {'Authorization': f'Bearer {self.admin_token}'}
+            self.run_test(
+                "Verify Admin Token", 
+                "GET", 
+                f"{self.admin_api_url}/verify", 
+                200, 
+                headers=admin_headers
+            )
+            
+            return True
+        
+        return False
+
+    def test_admin_product_management(self):
+        """Test admin product CRUD operations"""
+        print("\n" + "="*50)
+        print("TESTING ADMIN PRODUCT MANAGEMENT")
+        print("="*50)
+        
+        if not self.admin_token:
+            print("❌ Skipping admin product tests - no admin token")
+            return False
+        
+        admin_headers = {'Authorization': f'Bearer {self.admin_token}'}
+        
+        # Test get all products (admin)
+        success, products = self.run_test(
+            "Admin Get All Products", 
+            "GET", 
+            f"{self.admin_api_url}/products", 
+            200, 
+            headers=admin_headers
+        )
+        
+        if success and products:
+            print(f"   Found {len(products)} products in admin view")
+            
+            # Test category filtering
+            self.run_test(
+                "Admin Get Vegetarian Products", 
+                "GET", 
+                f"{self.admin_api_url}/products?category=vegetarian", 
+                200, 
+                headers=admin_headers
+            )
+            
+            self.run_test(
+                "Admin Get Vegan Products", 
+                "GET", 
+                f"{self.admin_api_url}/products?category=vegan", 
+                200, 
+                headers=admin_headers
+            )
+            
+            # Test get single product
+            if products:
+                product_id = products[0]['id']
+                self.run_test(
+                    "Admin Get Single Product", 
+                    "GET", 
+                    f"{self.admin_api_url}/products/{product_id}", 
+                    200, 
+                    headers=admin_headers
+                )
+                
+                # Test toggle product status
+                self.run_test(
+                    "Admin Toggle Product Status", 
+                    "POST", 
+                    f"{self.admin_api_url}/products/{product_id}/toggle-status", 
+                    200, 
+                    headers=admin_headers
+                )
+        
+        # Test create new product
+        new_product_data = {
+            "name": "Test Dish",
+            "description": "A test dish for API testing",
+            "images": ["https://example.com/test-image.jpg"],
+            "category": "vegetarian",
+            "subcategory": "north-indian",
+            "base_price": 199.0,
+            "stock_quantity": 50,
+            "min_stock_level": 10,
+            "preparation_time": 20,
+            "tags": ["test", "api", "dish"]
+        }
+        
+        success, created_product = self.run_test(
+            "Admin Create Product", 
+            "POST", 
+            f"{self.admin_api_url}/products", 
+            200, 
+            data=new_product_data,
+            headers=admin_headers
+        )
+        
+        if success and created_product:
+            created_product_id = created_product['id']
+            print(f"   Created product with ID: {created_product_id}")
+            
+            # Test update product
+            update_data = {
+                "name": "Updated Test Dish",
+                "base_price": 249.0
+            }
+            
+            self.run_test(
+                "Admin Update Product", 
+                "PUT", 
+                f"{self.admin_api_url}/products/{created_product_id}", 
+                200, 
+                data=update_data,
+                headers=admin_headers
+            )
+            
+            # Test delete product
+            self.run_test(
+                "Admin Delete Product", 
+                "DELETE", 
+                f"{self.admin_api_url}/products/{created_product_id}", 
+                200, 
+                headers=admin_headers
+            )
+        
+        return True
+
+    def test_admin_stats_dashboard(self):
+        """Test admin stats and dashboard endpoints"""
+        print("\n" + "="*50)
+        print("TESTING ADMIN STATS & DASHBOARD")
+        print("="*50)
+        
+        if not self.admin_token:
+            print("❌ Skipping admin stats tests - no admin token")
+            return False
+        
+        admin_headers = {'Authorization': f'Bearer {self.admin_token}'}
+        
+        # Test admin stats
+        success, stats = self.run_test(
+            "Admin Get Stats", 
+            "GET", 
+            f"{self.admin_api_url}/stats", 
+            200, 
+            headers=admin_headers
+        )
+        
+        if success and stats:
+            print(f"   Total products: {stats.get('total_products', 0)}")
+            print(f"   Active products: {stats.get('active_products', 0)}")
+            print(f"   Total users: {stats.get('total_users', 0)}")
+            print(f"   Total orders: {stats.get('total_orders', 0)}")
+            print(f"   Low stock products: {stats.get('low_stock_products', 0)}")
+        
+        return True
+
+    def test_admin_order_management(self):
+        """Test admin order management"""
+        print("\n" + "="*50)
+        print("TESTING ADMIN ORDER MANAGEMENT")
+        print("="*50)
+        
+        if not self.admin_token:
+            print("❌ Skipping admin order tests - no admin token")
+            return False
+        
+        admin_headers = {'Authorization': f'Bearer {self.admin_token}'}
+        
+        # Test get all orders
+        success, orders = self.run_test(
+            "Admin Get All Orders", 
+            "GET", 
+            f"{self.admin_api_url}/orders", 
+            200, 
+            headers=admin_headers
+        )
+        
+        if success:
+            print(f"   Found {len(orders) if orders else 0} orders")
+            
+            # If there are orders, test status update
+            if orders and len(orders) > 0:
+                order_id = orders[0]['id']
+                status_update = {"order_status": "confirmed"}
+                
+                self.run_test(
+                    "Admin Update Order Status", 
+                    "PUT", 
+                    f"{self.admin_api_url}/orders/{order_id}/status", 
+                    200, 
+                    data=status_update,
+                    headers=admin_headers
+                )
+        
+        return True
+
+    def test_product_data_structure(self):
+        """Test that products have all required new fields"""
+        print("\n" + "="*50)
+        print("TESTING PRODUCT DATA STRUCTURE")
+        print("="*50)
+        
+        # Get all products and verify structure
+        success, products = self.run_test("Get Products for Structure Test", "GET", "products", 200)
+        
+        if success and products:
+            print(f"   Testing data structure of {len(products)} products")
+            
+            # Check first product for required fields
+            if products:
+                product = products[0]
+                required_fields = [
+                    'id', 'name', 'description', 'images', 'category', 'subcategory',
+                    'base_price', 'stock_quantity', 'min_stock_level', 'preparation_time',
+                    'tags', 'is_active', 'created_at', 'updated_at'
+                ]
+                
+                missing_fields = []
+                for field in required_fields:
+                    if field not in product:
+                        missing_fields.append(field)
+                
+                if not missing_fields:
+                    print("✅ All required fields present in product data")
+                    self.tests_passed += 1
+                else:
+                    print(f"❌ Missing fields: {missing_fields}")
+                
+                self.tests_run += 1
+                
+                # Check subcategories
+                subcategories = set()
+                categories = set()
+                for p in products:
+                    subcategories.add(p.get('subcategory', 'unknown'))
+                    categories.add(p.get('category', 'unknown'))
+                
+                print(f"   Categories found: {sorted(categories)}")
+                print(f"   Subcategories found: {sorted(subcategories)}")
+        
+        return success
+
     def test_error_handling(self):
         """Test error handling scenarios"""
         print("\n" + "="*50)
@@ -272,6 +540,13 @@ class CloudsKitchenAPITester:
             "calculated_price": 100
         }]
         self.run_test("Calculate Cart with Invalid Product", "POST", "cart/calculate", 404, data=invalid_cart)
+        
+        # Test admin login with invalid credentials
+        invalid_admin_data = {
+            "username": "invalid",
+            "password": "invalid"
+        }
+        self.run_test("Invalid Admin Login", "POST", f"{self.admin_api_url}/login", 401, data=invalid_admin_data)
 
     def run_all_tests(self):
         """Run all API tests"""
