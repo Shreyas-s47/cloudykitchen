@@ -14,9 +14,6 @@ import jwt
 import bcrypt
 import random
 import string
-import smtplib
-from email.mime.text import MimeText
-from email.mime.multipart import MimeMultipart
 import re
 
 ROOT_DIR = Path(__file__).parent
